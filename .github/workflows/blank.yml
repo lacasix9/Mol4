@@ -1,4 +1,55 @@
-- Setup JDK 17 + Android SDK
-- ./gradlew assembleDebug
-- Upload APK en artifact (30 jours)
-- Crée une Release auto avec l'APK
+name: Build LightTV MOL4 APK - Mi Box S
+
+on:
+  push:
+    branches: [ main, master ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          java-version: '17'
+          distribution: 'temurin'
+          cache: gradle
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Grant execute permission for gradlew
+        run: chmod +x gradlew
+        continue-on-error: true
+
+      - name: Build APK Debug
+        run: |
+          if [ -f ./gradlew ]; then
+            ./gradlew assembleDebug --stacktrace
+          else
+            gradle wrapper
+            ./gradlew assembleDebug --stacktrace
+          fi
+
+      - name: Upload APK Debug
+        uses: actions/upload-artifact@v4
+        with:
+          name: LightTV-MOL4-Debug-APK-MiBoxS
+          path: app/build/outputs/apk/debug/app-debug.apk
+          retention-days: 30
+
+      - name: Create Release
+        if: github.ref == 'refs/heads/main'
+        uses: softprops/action-gh-release@v1
+        with:
+          files: app/build/outputs/apk/debug/app-debug.apk
+          tag_name: v2.0-MOL4-${{ github.run_number }}
+          name: LightTV MOL4 v2.0 - Build ${{ github.run_number }}
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        continue-on-error: true
